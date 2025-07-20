@@ -1,0 +1,1131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rainbow Notes - Creative Notebook</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-10px); }
+            100% { transform: translateY(0px); }
+        }
+        
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+        
+        @keyframes rainbow {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        
+        .rainbow-bg {
+            background: linear-gradient(45deg, #ff0000, #ff8000, #ffff00, #80ff00, #00ff80, #00ffff, #0080ff, #8000ff, #ff00ff, #ff0080);
+            background-size: 1000% 1000%;
+            animation: rainbow 30s ease infinite;
+        }
+        
+        .note-animation {
+            animation: float 6s ease-in-out infinite;
+        }
+        
+        .btn-pulse {
+            animation: pulse 2s infinite;
+        }
+        
+        .paper-texture {
+            background-image: url('data:image/svg+xml;utf8,<svg width="100" height="100" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><path d="M0 0h100v100H0z" fill="none"/><path d="M20 20l60 60M80 20L20 80" stroke="rgba(0,0,0,0.05)" stroke-width="0.5"/></svg>');
+            background-size: 30px 30px;
+        }
+        
+        .handwriting {
+            font-family: 'Comic Sans MS', 'Marker Felt', 'Segoe Print', cursive;
+        }
+        
+        .page-flip {
+            transition: transform 0.5s ease;
+        }
+        
+        .page-flip:hover {
+            transform: rotateY(10deg) rotateX(5deg);
+            box-shadow: -10px 10px 20px rgba(0,0,0,0.2);
+        }
+        
+        .sticky-note {
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        
+        .sticky-note:hover {
+            transform: rotate(-2deg);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+        }
+        
+        .color-option {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        
+        .color-option:hover {
+            transform: scale(1.2);
+        }
+        
+        #editor {
+            min-height: 300px;
+            resize: none;
+            background-color: rgba(255,255,255,0.9);
+        }
+        
+        #editor:focus {
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(255,255,255,0.5);
+        }
+        
+        .tooltip {
+            position: relative;
+            display: inline-block;
+        }
+        
+        .tooltip .tooltiptext {
+            visibility: hidden;
+            width: 120px;
+            background-color: #555;
+            color: #fff;
+            text-align: center;
+            border-radius: 6px;
+            padding: 5px;
+            position: absolute;
+            z-index: 1;
+            bottom: 125%;
+            left: 50%;
+            margin-left: -60px;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        
+        .tooltip:hover .tooltiptext {
+            visibility: visible;
+            opacity: 1;
+        }
+        
+        .todo-list {
+            border-left: 3px solid #ddd;
+            padding-left: 10px;
+        }
+        
+        .todo-item span {
+            flex: 1;
+            padding: 2px 5px;
+        }
+        
+        .todo-item span:focus {
+            outline: none;
+            background-color: rgba(0,0,0,0.05);
+            border-radius: 3px;
+        }
+    </style>
+</head>
+<body class="rainbow-bg min-h-screen p-4 md:p-8">
+    <!-- Serial Number Verification Modal -->
+    <div id="serialModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+        <div class="bg-white rounded-xl p-8 max-w-md w-full">
+            <div class="text-center mb-6">
+                <i class="fas fa-lock text-4xl text-purple-600 mb-4"></i>
+                <h2 class="text-2xl font-bold text-gray-800">Welcome to Rainbow Notes</h2>
+                <p class="text-gray-600 mt-2">Please enter your serial number to continue</p>
+            </div>
+            
+            <div class="mb-4">
+                <input type="text" id="serialInput" placeholder="Enter serial number" 
+                       class="w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 text-center font-mono tracking-wider">
+                <p id="serialError" class="text-red-500 text-sm mt-2 hidden">Invalid serial number. Please try again.</p>
+            </div>
+            
+            <button id="verifySerialBtn" class="w-full bg-purple-600 text-white py-3 rounded-lg font-semibold hover:bg-purple-700 transition-colors">
+                Verify & Continue
+            </button>
+            
+            <div class="mt-4 text-center text-sm text-gray-500">
+                <p>Don't have a serial number? <a href="#" class="text-purple-600 hover:underline">Purchase one</a></p>
+            </div>
+        </div>
+    </div>
+    <div class="max-w-6xl mx-auto hidden" id="appContent">
+        <!-- Header -->
+        <header class="flex flex-col md:flex-row justify-between items-center mb-8">
+            <div class="flex items-center mb-4 md:mb-0">
+                <i class="fas fa-book-open text-white text-4xl mr-3 note-animation"></i>
+                <h1 class="text-3xl md:text-4xl font-bold text-white">Rainbow Notes</h1>
+            </div>
+            
+            <div class="flex space-x-2">
+                <button id="newNoteBtn" class="bg-white text-purple-600 px-4 py-2 rounded-full font-semibold hover:bg-purple-100 transition-all flex items-center">
+                    <i class="fas fa-plus mr-2"></i> New Note
+                </button>
+                <button id="helpBtn" class="bg-white text-blue-600 px-4 py-2 rounded-full font-semibold hover:bg-blue-100 transition-all flex items-center">
+                    <i class="fas fa-question-circle mr-2"></i> Help
+                </button>
+            </div>
+        </header>
+        
+        <!-- Main Content -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <!-- Sidebar -->
+            <div class="lg:col-span-1">
+                <div class="bg-white bg-opacity-90 rounded-xl p-6 shadow-xl sticky top-6">
+                    <h2 class="text-xl font-bold mb-4 text-gray-800">My Notes</h2>
+                    
+                    <div class="mb-4 relative">
+                        <input type="text" id="searchNotes" placeholder="Search notes..." class="w-full px-4 py-2 rounded-full border border-gray-300 focus:outline-none focus:ring-2 focus:ring-purple-500">
+                        <i class="fas fa-search absolute right-3 top-3 text-gray-400"></i>
+                    </div>
+                    
+                    <div id="notesList" class="space-y-3 max-h-96 overflow-y-auto">
+                        <!-- Notes will be listed here -->
+                    </div>
+                    
+                    <div class="mt-6">
+                        <h3 class="font-semibold text-gray-700 mb-2">Note Color</h3>
+                        <div class="flex flex-wrap gap-2">
+                            <div class="color-option bg-yellow-200" data-color="yellow-200"></div>
+                            <div class="color-option bg-blue-200" data-color="blue-200"></div>
+                            <div class="color-option bg-green-200" data-color="green-200"></div>
+                            <div class="color-option bg-pink-200" data-color="pink-200"></div>
+                            <div class="color-option bg-purple-200" data-color="purple-200"></div>
+                            <div class="color-option bg-red-200" data-color="red-200"></div>
+                            <div class="color-option bg-indigo-200" data-color="indigo-200"></div>
+                            <div class="color-option bg-teal-200" data-color="teal-200"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-6">
+                        <h3 class="font-semibold text-gray-700 mb-2">Quick Actions</h3>
+                        <div class="grid grid-cols-2 gap-2">
+                            <button id="saveNoteBtn" class="bg-green-500 text-white px-3 py-2 rounded-lg text-sm flex items-center justify-center">
+                                <i class="fas fa-save mr-1"></i> Save
+                            </button>
+                            <button id="deleteNoteBtn" class="bg-red-500 text-white px-3 py-2 rounded-lg text-sm flex items-center justify-center">
+                                <i class="fas fa-trash mr-1"></i> Delete
+                            </button>
+                            <button id="boldBtn" class="bg-gray-200 text-gray-800 px-3 py-2 rounded-lg text-sm flex items-center justify-center">
+                                <i class="fas fa-bold mr-1"></i> Bold
+                            </button>
+                            <button id="italicBtn" class="bg-gray-200 text-gray-800 px-3 py-2 rounded-lg text-sm flex items-center justify-center">
+                                <i class="fas fa-italic mr-1"></i> Italic
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Editor -->
+            <div class="lg:col-span-2">
+                <div class="bg-white bg-opacity-90 rounded-xl shadow-xl overflow-hidden page-flip">
+                    <div class="p-6">
+                        <input type="text" id="noteTitle" placeholder="Note title..." class="w-full text-2xl font-bold mb-4 px-2 py-1 border-b-2 border-gray-200 focus:outline-none focus:border-purple-500 bg-transparent">
+                        
+                        <div class="flex items-center mb-4 space-x-2">
+                            <div class="tooltip">
+                                <button id="undoBtn" class="bg-gray-100 hover:bg-gray-200 p-2 rounded-full">
+                                    <i class="fas fa-undo"></i>
+                                </button>
+                                <span class="tooltiptext">Undo</span>
+                            </div>
+                            <div class="tooltip">
+                                <button id="redoBtn" class="bg-gray-100 hover:bg-gray-200 p-2 rounded-full">
+                                    <i class="fas fa-redo"></i>
+                                </button>
+                                <span class="tooltiptext">Redo</span>
+                            </div>
+                            <div class="tooltip">
+                                <button id="fontBtn" class="bg-gray-100 hover:bg-gray-200 p-2 rounded-full">
+                                    <i class="fas fa-font"></i>
+                                </button>
+                                <span class="tooltiptext">Change Font</span>
+                            </div>
+                            <div class="tooltip">
+                                <button id="sizeBtn" class="bg-gray-100 hover:bg-gray-200 p-2 rounded-full">
+                                    <i class="fas fa-text-height"></i>
+                                </button>
+                                <span class="tooltiptext">Text Size</span>
+                            </div>
+                            <div class="tooltip">
+                                <button id="listBtn" class="bg-gray-100 hover:bg-gray-200 p-2 rounded-full">
+                                    <i class="fas fa-list-ul"></i>
+                                </button>
+                                <span class="tooltiptext">Add List</span>
+                            </div>
+                            <div class="tooltip">
+                                <button id="linkBtn" class="bg-gray-100 hover:bg-gray-200 p-2 rounded-full">
+                                    <i class="fas fa-link"></i>
+                                </button>
+                                <span class="tooltiptext">Add Link</span>
+                            </div>
+                            <div class="tooltip">
+                                <button id="imageBtn" class="bg-gray-100 hover:bg-gray-200 p-2 rounded-full">
+                                    <i class="fas fa-image"></i>
+                                </button>
+                                <span class="tooltiptext">Add Image</span>
+                            </div>
+                            <input type="file" id="localImageInput" accept="image/*" class="hidden">
+                            <div class="tooltip">
+                                <button id="todoBtn" class="bg-gray-100 hover:bg-gray-200 p-2 rounded-full">
+                                    <i class="fas fa-tasks"></i>
+                                </button>
+                                <span class="tooltiptext">Add To-Do List</span>
+                            </div>
+                            <div class="tooltip">
+                                <button id="highlightBtn" class="bg-gray-100 hover:bg-gray-200 p-2 rounded-full">
+                                    <i class="fas fa-highlighter"></i>
+                                </button>
+                                <span class="tooltiptext">Highlight Text</span>
+                            </div>
+                        </div>
+                        
+                        <div id="editor" contenteditable="true" class="w-full p-4 rounded-lg paper-texture handwriting text-lg text-gray-800 border border-gray-200 focus:border-purple-300 transition-all"></div>
+                        
+                        <div class="mt-4 flex justify-between items-center">
+                            <div class="text-sm text-gray-500">
+                                <span id="charCount">0</span> characters
+                            </div>
+                            <div class="flex space-x-2">
+                                <button id="clearBtn" class="text-gray-500 hover:text-gray-700 text-sm flex items-center">
+                                    <i class="fas fa-eraser mr-1"></i> Clear
+                                </button>
+                                <button id="autoSaveToggle" class="text-purple-600 hover:text-purple-800 text-sm flex items-center">
+                                    <i class="fas fa-sync-alt mr-1"></i> Auto-save: ON
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Sticky Notes Area -->
+                <div class="mt-8">
+                    <h2 class="text-xl font-bold mb-4 text-white">Quick Sticky Notes</h2>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                        <div class="sticky-note bg-yellow-200 p-4 rounded-lg transform rotate-1">
+                            <textarea class="w-full bg-transparent border-none resize-none focus:outline-none handwriting" placeholder="Write a quick note..."></textarea>
+                        </div>
+                        <div class="sticky-note bg-blue-200 p-4 rounded-lg transform -rotate-1">
+                            <textarea class="w-full bg-transparent border-none resize-none focus:outline-none handwriting" placeholder="Write a quick note..."></textarea>
+                        </div>
+                        <div class="sticky-note bg-pink-200 p-4 rounded-lg transform rotate-2">
+                            <textarea class="w-full bg-transparent border-none resize-none focus:outline-none handwriting" placeholder="Write a quick note..."></textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Help Modal -->
+    <div id="helpModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-xl p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-2xl font-bold text-purple-600">Help & Tips</h2>
+                <button id="closeHelpModal" class="text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-times text-2xl"></i>
+                </button>
+            </div>
+            
+            <div class="space-y-4">
+                <div>
+                    <h3 class="font-bold text-lg text-gray-800">Getting Started</h3>
+                    <p class="text-gray-600">Welcome to Rainbow Notes! Click "New Note" to start creating your first note. Your notes are automatically saved to your browser's local storage.</p>
+                </div>
+                
+                <div>
+                    <h3 class="font-bold text-lg text-gray-800">Features</h3>
+                    <ul class="list-disc pl-5 text-gray-600 space-y-1">
+                        <li><strong>Rich Text Editing:</strong> Format your text with bold, italic, lists and more</li>
+                        <li><strong>Color Coding:</strong> Organize notes with different colors</li>
+                        <li><strong>Auto-save:</strong> Your work is saved automatically (can be toggled)</li>
+                        <li><strong>Quick Sticky Notes:</strong> For temporary thoughts and ideas</li>
+                        <li><strong>Search:</strong> Quickly find your notes</li>
+                    </ul>
+                </div>
+                
+                <div>
+                    <h3 class="font-bold text-lg text-gray-800">Keyboard Shortcuts</h3>
+                    <ul class="list-disc pl-5 text-gray-600 space-y-1">
+                        <li><strong>Ctrl+B:</strong> Bold text</li>
+                        <li><strong>Ctrl+I:</strong> Italic text</li>
+                        <li><strong>Ctrl+S:</strong> Save current note</li>
+                        <li><strong>Ctrl+N:</strong> New note</li>
+                    </ul>
+                </div>
+                
+                <div class="bg-yellow-50 p-4 rounded-lg border border-yellow-200">
+                    <h3 class="font-bold text-lg text-yellow-800">Important Note</h3>
+                    <p class="text-yellow-700">All notes are saved only in your browser. If you clear your browser data or use a different device, your notes won't be available.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Font Modal -->
+    <div id="fontModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-xl p-6 max-w-md w-full">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-bold">Choose Font</h2>
+                <button id="closeFontModal" class="text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <div class="grid grid-cols-2 gap-3">
+                <button data-font="sans-serif" class="p-3 border rounded-lg hover:bg-gray-100">Arial (Sans-serif)</button>
+                <button data-font="serif" class="p-3 border rounded-lg hover:bg-gray-100 font-serif">Times (Serif)</button>
+                <button data-font="monospace" class="p-3 border rounded-lg hover:bg-gray-100 font-mono">Courier (Monospace)</button>
+                <button data-font="handwriting" class="p-3 border rounded-lg hover:bg-gray-100 handwriting">Handwriting</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Highlight Modal -->
+    <div id="highlightModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-xl p-6 max-w-md w-full">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-bold">Highlight Color</h2>
+                <button id="closeHighlightModal" class="text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <div class="grid grid-cols-4 gap-3">
+                <button data-highlight="yellow" class="p-3 border rounded-lg hover:bg-gray-100 bg-yellow-200">Yellow</button>
+                <button data-highlight="pink" class="p-3 border rounded-lg hover:bg-gray-100 bg-pink-200">Pink</button>
+                <button data-highlight="green" class="p-3 border rounded-lg hover:bg-gray-100 bg-green-200">Green</button>
+                <button data-highlight="blue" class="p-3 border rounded-lg hover:bg-gray-100 bg-blue-200">Blue</button>
+                <button data-highlight="none" class="p-3 border rounded-lg hover:bg-gray-100">Remove</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Size Modal -->
+    <div id="sizeModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-xl p-6 max-w-md w-full">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-bold">Text Size</h2>
+                <button id="closeSizeModal" class="text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <div class="grid grid-cols-3 gap-3">
+                <button data-size="small" class="p-3 border rounded-lg hover:bg-gray-100 text-sm">Small</button>
+                <button data-size="medium" class="p-3 border rounded-lg hover:bg-gray-100">Medium</button>
+                <button data-size="large" class="p-3 border rounded-lg hover:bg-gray-100 text-lg">Large</button>
+                <button data-size="xl" class="p-3 border rounded-lg hover:bg-gray-100 text-xl">Extra Large</button>
+                <button data-size="xxl" class="p-3 border rounded-lg hover:bg-gray-100 text-2xl">XXL</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Confirmation Modal -->
+    <div id="confirmModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-xl p-6 max-w-md w-full">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-xl font-bold" id="confirmTitle">Confirm Action</h2>
+                <button id="closeConfirmModal" class="text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <p class="mb-6" id="confirmMessage">Are you sure you want to perform this action?</p>
+            
+            <div class="flex justify-end space-x-3">
+                <button id="cancelConfirm" class="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-100">Cancel</button>
+                <button id="confirmAction" class="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600">Confirm</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Notification -->
+    <div id="notification" class="fixed bottom-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg hidden flex items-center">
+        <i class="fas fa-check-circle mr-2"></i>
+        <span id="notificationMessage">Note saved successfully!</span>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Serial number verification
+            const serialModal = document.getElementById('serialModal');
+            const serialInput = document.getElementById('serialInput');
+            const verifySerialBtn = document.getElementById('verifySerialBtn');
+            const serialError = document.getElementById('serialError');
+            const appContent = document.getElementById('appContent');
+            
+            // Check if already verified
+            if (localStorage.getItem('serialVerified') === 'true') {
+                serialModal.classList.add('hidden');
+                appContent.classList.remove('hidden');
+            }
+            
+            // Valid serial numbers (in a real app, this would be server-side)
+            const validSerials = [
+                'RAINBOW-1234-5678',
+                'NOTES-9876-5432',
+                'COLORFUL-2468-1357'
+            ];
+            
+            // Verify serial number
+            verifySerialBtn.addEventListener('click', () => {
+                const serial = serialInput.value.trim().toUpperCase();
+                
+                if (validSerials.includes(serial)) {
+                    // Valid serial
+                    localStorage.setItem('serialVerified', 'true');
+                    serialModal.classList.add('hidden');
+                    appContent.classList.remove('hidden');
+                } else {
+                    // Invalid serial
+                    serialError.classList.remove('hidden');
+                    serialInput.classList.add('border-red-500');
+                    setTimeout(() => {
+                        serialError.classList.add('hidden');
+                        serialInput.classList.remove('border-red-500');
+                    }, 3000);
+                }
+            });
+            
+            // Allow pressing Enter to verify
+            serialInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    verifySerialBtn.click();
+                }
+            });
+            // DOM Elements
+            const editor = document.getElementById('editor');
+            const noteTitle = document.getElementById('noteTitle');
+            const notesList = document.getElementById('notesList');
+            const newNoteBtn = document.getElementById('newNoteBtn');
+            const saveNoteBtn = document.getElementById('saveNoteBtn');
+            const deleteNoteBtn = document.getElementById('deleteNoteBtn');
+            const searchNotes = document.getElementById('searchNotes');
+            const charCount = document.getElementById('charCount');
+            const clearBtn = document.getElementById('clearBtn');
+            const autoSaveToggle = document.getElementById('autoSaveToggle');
+            const helpBtn = document.getElementById('helpBtn');
+            const helpModal = document.getElementById('helpModal');
+            const closeHelpModal = document.getElementById('closeHelpModal');
+            const fontBtn = document.getElementById('fontBtn');
+            const fontModal = document.getElementById('fontModal');
+            const closeFontModal = document.getElementById('closeFontModal');
+            const sizeBtn = document.getElementById('sizeBtn');
+            const sizeModal = document.getElementById('sizeModal');
+            const closeSizeModal = document.getElementById('closeSizeModal');
+            const boldBtn = document.getElementById('boldBtn');
+            const italicBtn = document.getElementById('italicBtn');
+            const listBtn = document.getElementById('listBtn');
+            const linkBtn = document.getElementById('linkBtn');
+            const imageBtn = document.getElementById('imageBtn');
+            const confirmModal = document.getElementById('confirmModal');
+            const closeConfirmModal = document.getElementById('closeConfirmModal');
+            const cancelConfirm = document.getElementById('cancelConfirm');
+            const confirmAction = document.getElementById('confirmAction');
+            const confirmTitle = document.getElementById('confirmTitle');
+            const confirmMessage = document.getElementById('confirmMessage');
+            const notification = document.getElementById('notification');
+            const notificationMessage = document.getElementById('notificationMessage');
+            const colorOptions = document.querySelectorAll('.color-option');
+            const stickyNotes = document.querySelectorAll('.sticky-note textarea');
+            
+            // App State
+            let notes = JSON.parse(localStorage.getItem('rainbow-notes')) || [];
+            let currentNoteId = null;
+            let autoSaveEnabled = true;
+            let pendingAction = null;
+            
+            // Initialize the app
+            function init() {
+                renderNotesList();
+                if (notes.length > 0) {
+                    loadNote(notes[0].id);
+                } else {
+                    createNewNote();
+                }
+                
+                // Set up event listeners for sticky notes
+                stickyNotes.forEach((note, index) => {
+                    // Load saved sticky notes
+                    const savedSticky = localStorage.getItem(`sticky-note-${index}`);
+                    if (savedSticky) {
+                        note.value = savedSticky;
+                    }
+                    
+                    // Undo/redo for sticky notes
+                    const undoStacks = Array(3).fill().map(() => []);
+                    const redoStacks = Array(3).fill().map(() => []);
+                    let stickyTimeouts = Array(3).fill(null);
+
+                    function saveStickyUndoState(index) {
+                        if (stickyTimeouts[index]) clearTimeout(stickyTimeouts[index]);
+                        stickyTimeouts[index] = setTimeout(() => {
+                            undoStacks[index].push(note.value);
+                            redoStacks[index] = [];
+                        }, 300);
+                    }
+
+                    // Save on change
+                    note.addEventListener('input', () => {
+                        saveStickyUndoState(index);
+                        localStorage.setItem(`sticky-note-${index}`, note.value);
+                        showNotification('Sticky note saved!');
+                    });
+
+                });
+            }
+            
+            // Render the notes list
+            function renderNotesList(filter = '') {
+                notesList.innerHTML = '';
+                
+                const filteredNotes = filter 
+                    ? notes.filter(note => 
+                        note.title.toLowerCase().includes(filter.toLowerCase()) || 
+                        note.content.toLowerCase().includes(filter.toLowerCase()))
+                    : notes;
+                
+                if (filteredNotes.length === 0) {
+                    notesList.innerHTML = '<p class="text-gray-500 text-center py-4">No notes found</p>';
+                    return;
+                }
+                
+                filteredNotes.forEach(note => {
+                    const noteElement = document.createElement('div');
+                    noteElement.className = `p-3 rounded-lg cursor-pointer flex items-center ${note.id === currentNoteId ? 'bg-purple-100 border-l-4 border-purple-500' : 'bg-gray-100 hover:bg-gray-200'}`;
+                    noteElement.innerHTML = `
+                        <div class="w-4 h-4 rounded-full mr-3 ${note.color || 'bg-yellow-200'}"></div>
+                        <div class="flex-1 min-w-0">
+                            <h3 class="font-medium truncate">${note.title || 'Untitled Note'}</h3>
+                            <p class="text-xs text-gray-500 truncate">${new Date(note.updatedAt).toLocaleString()}</p>
+                        </div>
+                    `;
+                    noteElement.addEventListener('click', () => loadNote(note.id));
+                    notesList.appendChild(noteElement);
+                });
+            }
+            
+            // Create a new note
+            function createNewNote() {
+                const newNote = {
+                    id: Date.now().toString(),
+                    title: '',
+                    content: '',
+                    color: 'yellow-200',
+                    createdAt: new Date(),
+                    updatedAt: new Date()
+                };
+                
+                notes.unshift(newNote);
+                currentNoteId = newNote.id;
+                noteTitle.value = '';
+                editor.innerHTML = '';
+                updateCharacterCount();
+                saveNotes();
+                renderNotesList();
+                
+                // Focus the title field
+                setTimeout(() => noteTitle.focus(), 100);
+            }
+            
+            // Load a note
+            function loadNote(id) {
+                const note = notes.find(n => n.id === id);
+                if (!note) return;
+                
+                currentNoteId = note.id;
+                noteTitle.value = note.title;
+                editor.innerHTML = note.content;
+                updateCharacterCount();
+                
+                // Highlight the selected note in the list
+                renderNotesList(searchNotes.value);
+            }
+            
+            // Save notes to localStorage
+            function saveNotes() {
+                localStorage.setItem('rainbow-notes', JSON.stringify(notes));
+            }
+            
+            // Save the current note
+            function saveCurrentNote() {
+                if (!currentNoteId) return;
+                
+                const noteIndex = notes.findIndex(n => n.id === currentNoteId);
+                if (noteIndex === -1) return;
+                
+                notes[noteIndex].title = noteTitle.value;
+                notes[noteIndex].content = editor.innerHTML;
+                notes[noteIndex].updatedAt = new Date();
+                
+                saveNotes();
+                renderNotesList(searchNotes.value);
+                showNotification('Note saved successfully!');
+            }
+            
+            // Delete the current note
+            function deleteCurrentNote() {
+                if (!currentNoteId) return;
+                
+                notes = notes.filter(n => n.id !== currentNoteId);
+                saveNotes();
+                
+                if (notes.length > 0) {
+                    loadNote(notes[0].id);
+                } else {
+                    createNewNote();
+                }
+                
+                renderNotesList(searchNotes.value);
+                showNotification('Note deleted!');
+            }
+            
+            // Update character count
+            function updateCharacterCount() {
+                const text = editor.innerText;
+                charCount.textContent = text.length;
+            }
+            
+            // Show notification
+            function showNotification(message) {
+                notificationMessage.textContent = message;
+                notification.classList.remove('hidden');
+                notification.classList.add('flex');
+                
+                setTimeout(() => {
+                    notification.classList.add('hidden');
+                    notification.classList.remove('flex');
+                }, 3000);
+            }
+            
+            // Confirm action
+            function showConfirm(title, message, action) {
+                confirmTitle.textContent = title;
+                confirmMessage.textContent = message;
+                pendingAction = action;
+                confirmModal.classList.remove('hidden');
+            }
+            
+            // Event Listeners
+            newNoteBtn.addEventListener('click', createNewNote);
+            
+            saveNoteBtn.addEventListener('click', saveCurrentNote);
+            
+            deleteNoteBtn.addEventListener('click', () => {
+                showConfirm(
+                    'Delete Note', 
+                    'Are you sure you want to delete this note? This action cannot be undone.', 
+                    deleteCurrentNote
+                );
+            });
+            
+            searchNotes.addEventListener('input', (e) => {
+                renderNotesList(e.target.value);
+            });
+            
+            noteTitle.addEventListener('input', () => {
+                if (autoSaveEnabled) {
+                    saveCurrentNote();
+                }
+            });
+            
+            editor.addEventListener('input', () => {
+                updateCharacterCount();
+                if (autoSaveEnabled) {
+                    saveCurrentNote();
+                }
+            });
+            
+            clearBtn.addEventListener('click', () => {
+                showConfirm(
+                    'Clear Note', 
+                    'Are you sure you want to clear the current note? This will remove all content.', 
+                    () => {
+                        editor.innerHTML = '';
+                        updateCharacterCount();
+                        if (autoSaveEnabled) {
+                            saveCurrentNote();
+                        }
+                    }
+                );
+            });
+            
+            autoSaveToggle.addEventListener('click', () => {
+                autoSaveEnabled = !autoSaveEnabled;
+                autoSaveToggle.innerHTML = autoSaveEnabled 
+                    ? '<i class="fas fa-sync-alt mr-1"></i> Auto-save: ON' 
+                    : '<i class="fas fa-sync-alt mr-1"></i> Auto-save: OFF';
+                
+                showNotification(`Auto-save ${autoSaveEnabled ? 'enabled' : 'disabled'}`);
+            });
+            
+            helpBtn.addEventListener('click', () => {
+                helpModal.classList.remove('hidden');
+            });
+            
+            closeHelpModal.addEventListener('click', () => {
+                helpModal.classList.add('hidden');
+            });
+            
+            fontBtn.addEventListener('click', () => {
+                fontModal.classList.remove('hidden');
+            });
+            
+            closeFontModal.addEventListener('click', () => {
+                fontModal.classList.add('hidden');
+            });
+            
+            sizeBtn.addEventListener('click', () => {
+                sizeModal.classList.remove('hidden');
+            });
+            
+            closeSizeModal.addEventListener('click', () => {
+                sizeModal.classList.add('hidden');
+            });
+            
+            // Font selection
+            document.querySelectorAll('[data-font]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const font = btn.getAttribute('data-font');
+                    const selection = window.getSelection();
+                    
+                    if (selection.toString().length > 0) {
+                        // Apply to selected text
+                        const range = selection.getRangeAt(0);
+                        const span = document.createElement('span');
+                        span.style.fontFamily = font === 'handwriting' ? 'Comic Sans MS, Marker Felt, Segoe Print, cursive' : font;
+                        range.surroundContents(span);
+                    } else {
+                        // Apply to all text
+                        if (font === 'handwriting') {
+                            editor.classList.add('handwriting');
+                        } else {
+                            editor.classList.remove('handwriting');
+                            editor.style.fontFamily = font;
+                        }
+                    }
+                    fontModal.classList.add('hidden');
+                });
+            });
+            
+            // Size selection
+            document.querySelectorAll('[data-size]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const size = btn.getAttribute('data-size');
+                    let fontSize = '1rem';
+                    
+                    switch(size) {
+                        case 'small': fontSize = '0.875rem'; break;
+                        case 'medium': fontSize = '1rem'; break;
+                        case 'large': fontSize = '1.125rem'; break;
+                        case 'xl': fontSize = '1.25rem'; break;
+                        case 'xxl': fontSize = '1.5rem'; break;
+                    }
+                    
+                    const selection = window.getSelection();
+                    
+                    if (selection.toString().length > 0) {
+                        // Apply to selected text
+                        const range = selection.getRangeAt(0);
+                        const span = document.createElement('span');
+                        span.style.fontSize = fontSize;
+                        range.surroundContents(span);
+                    } else {
+                        // Apply to all text
+                        editor.style.fontSize = fontSize;
+                    }
+                    sizeModal.classList.add('hidden');
+                });
+            });
+            
+            // Todo list button
+            const todoBtn = document.getElementById('todoBtn');
+            const highlightBtn = document.getElementById('highlightBtn');
+            const highlightModal = document.getElementById('highlightModal');
+            const closeHighlightModal = document.getElementById('closeHighlightModal');
+            todoBtn.addEventListener('click', () => {
+                const todoHtml = `
+                    <div class="todo-list my-2">
+                        <div class="todo-item flex items-center mb-1">
+                            <input type="checkbox" class="mr-2">
+                            <span contenteditable="true">Task 1</span>
+                        </div>
+                        <div class="todo-item flex items-center mb-1">
+                            <input type="checkbox" class="mr-2">
+                            <span contenteditable="true">Task 2</span>
+                        </div>
+                        <div class="todo-item flex items-center mb-1">
+                            <input type="checkbox" class="mr-2">
+                            <span contenteditable="true">Task 3</span>
+                        </div>
+                    </div>
+                `;
+                
+                // Insert at cursor position
+                const selection = window.getSelection();
+                if (selection.rangeCount > 0) {
+                    const range = selection.getRangeAt(0);
+                    range.deleteContents();
+                    
+                    const div = document.createElement('div');
+                    div.innerHTML = todoHtml;
+                    range.insertNode(div);
+                    
+                    // Focus on first task
+                    const firstTask = div.querySelector('.todo-item span');
+                    if (firstTask) {
+                        const newRange = document.createRange();
+                        newRange.selectNodeContents(firstTask);
+                        selection.removeAllRanges();
+                        selection.addRange(newRange);
+                    }
+                }
+            });
+
+            // Text formatting
+            boldBtn.addEventListener('click', () => {
+                document.execCommand('bold', false, null);
+            });
+            
+            italicBtn.addEventListener('click', () => {
+                document.execCommand('italic', false, null);
+            });
+            
+            listBtn.addEventListener('click', () => {
+                document.execCommand('insertUnorderedList', false, null);
+            });
+            
+            linkBtn.addEventListener('click', () => {
+                const url = prompt('Enter the URL:', 'https://');
+                if (url && url !== 'https://') {
+                    // Create link element directly instead of using execCommand
+                    const selection = window.getSelection();
+                    if (selection.rangeCount > 0) {
+                        const range = selection.getRangeAt(0);
+                        const link = document.createElement('a');
+                        link.href = url;
+                        link.textContent = url;
+                        link.target = '_blank';
+                        link.rel = 'noopener noreferrer';
+                        link.style.color = '#2563eb';
+                        link.style.textDecoration = 'underline';
+                        link.style.cursor = 'pointer';
+                        
+                        // Make the link non-editable
+                        link.contentEditable = 'false';
+                        
+                        range.deleteContents();
+                        range.insertNode(link);
+                        
+                        // Move cursor after the link
+                        const newRange = document.createRange();
+                        newRange.setStartAfter(link);
+                        selection.removeAllRanges();
+                        selection.addRange(newRange);
+                    }
+                }
+            });
+            
+            imageBtn.addEventListener('click', () => {
+                const choice = confirm('Would you like to upload an image from your computer? (OK for local file, Cancel for URL)');
+                if (choice) {
+                    localImageInput.click();
+                } else {
+                    const url = prompt('Enter the image URL:', 'https://');
+                    if (url && url !== 'https://') {
+                        insertImage(url);
+                    }
+                }
+            });
+
+            localImageInput.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = (event) => {
+                        insertImage(event.target.result);
+                    };
+                    reader.readAsDataURL(file);
+                }
+                // Reset input to allow selecting same file again
+                e.target.value = '';
+            });
+
+            function insertImage(src) {
+                const img = document.createElement('img');
+                img.src = src;
+                img.style.maxWidth = '100%';
+                img.style.height = 'auto';
+                img.style.margin = '10px 0';
+                
+                const selection = window.getSelection();
+                if (selection.rangeCount > 0) {
+                    const range = selection.getRangeAt(0);
+                    range.deleteContents();
+                    range.insertNode(img);
+                }
+            }
+            
+            // Color selection
+            colorOptions.forEach(option => {
+                option.addEventListener('click', () => {
+                    const color = option.getAttribute('data-color');
+                    const noteIndex = notes.findIndex(n => n.id === currentNoteId);
+                    if (noteIndex !== -1) {
+                        notes[noteIndex].color = color;
+                        saveNotes();
+                        renderNotesList(searchNotes.value);
+                    }
+                });
+            });
+            
+            // Confirm modal actions
+            confirmAction.addEventListener('click', () => {
+                if (pendingAction) {
+                    pendingAction();
+                }
+                confirmModal.classList.add('hidden');
+                pendingAction = null;
+            });
+            
+            cancelConfirm.addEventListener('click', () => {
+                confirmModal.classList.add('hidden');
+                pendingAction = null;
+            });
+            
+            closeConfirmModal.addEventListener('click', () => {
+                confirmModal.classList.add('hidden');
+                pendingAction = null;
+            });
+            
+            // Keyboard shortcuts
+            document.addEventListener('keydown', (e) => {
+                if (e.ctrlKey || e.metaKey) {
+                    switch(e.key.toLowerCase()) {
+                        case 's':
+                            e.preventDefault();
+                            saveCurrentNote();
+                            break;
+                        case 'n':
+                            e.preventDefault();
+                            createNewNote();
+                            break;
+                        case 'b':
+                            e.preventDefault();
+                            document.execCommand('bold', false, null);
+                            break;
+                        case 'i':
+                            e.preventDefault();
+                            document.execCommand('italic', false, null);
+                            break;
+                    }
+                }
+            });
+            
+            // Undo/redo functionality
+            const undoBtn = document.getElementById('undoBtn');
+            const redoBtn = document.getElementById('redoBtn');
+            let undoStack = [];
+            let redoStack = [];
+            let undoTimeout;
+
+            function saveUndoState() {
+                if (undoTimeout) clearTimeout(undoTimeout);
+                undoTimeout = setTimeout(() => {
+                    undoStack.push({
+                        html: editor.innerHTML,
+                        title: noteTitle.value
+                    });
+                    redoStack = []; // Clear redo stack when new changes are made
+                }, 300);
+            }
+
+            undoBtn.addEventListener('click', () => {
+                if (undoStack.length > 0) {
+                    const currentState = {
+                        html: editor.innerHTML,
+                        title: noteTitle.value
+                    };
+                    redoStack.push(currentState);
+                    
+                    const undoState = undoStack.pop();
+                    editor.innerHTML = undoState.html;
+                    noteTitle.value = undoState.title;
+                    
+                    updateCharacterCount();
+                    if (autoSaveEnabled) saveCurrentNote();
+                }
+            });
+
+            redoBtn.addEventListener('click', () => {
+                if (redoStack.length > 0) {
+                    const currentState = {
+                        html: editor.innerHTML,
+                        title: noteTitle.value
+                    };
+                    undoStack.push(currentState);
+                    
+                    const redoState = redoStack.pop();
+                    editor.innerHTML = redoState.html;
+                    noteTitle.value = redoState.title;
+                    
+                    updateCharacterCount();
+                    if (autoSaveEnabled) saveCurrentNote();
+                }
+            });
+
+            // Track changes for undo/redo
+            editor.addEventListener('input', () => {
+                updateCharacterCount();
+                saveUndoState();
+                if (autoSaveEnabled) saveCurrentNote();
+            });
+
+            noteTitle.addEventListener('input', () => {
+                saveUndoState();
+                if (autoSaveEnabled) saveCurrentNote();
+            });
+
+            // Highlight button
+            highlightBtn.addEventListener('click', () => {
+                highlightModal.classList.remove('hidden');
+            });
+
+            closeHighlightModal.addEventListener('click', () => {
+                highlightModal.classList.add('hidden');
+            });
+
+            // Highlight selection
+            document.querySelectorAll('[data-highlight]').forEach(btn => {
+                btn.addEventListener('click', () => {
+                    const color = btn.getAttribute('data-highlight');
+                    if (color === 'none') {
+                        document.execCommand('removeFormat', false, null);
+                    } else {
+                        document.execCommand('hiliteColor', false, color === 'yellow' ? '#fef08a' : 
+                                                                    color === 'pink' ? '#fecdd3' : 
+                                                                    color === 'green' ? '#bbf7d0' : 
+                                                                    '#bfdbfe');
+                    }
+                    highlightModal.classList.add('hidden');
+                });
+            });
+
+            // Initialize the app
+            init();
+        });
+    </script>
+</body>
+</html>
